@@ -1,0 +1,153 @@
+<script>
+    /* STATE MANAGEMENT */
+    const App = {
+        products: [],
+        cart: [],
+
+        init: function () {
+            // 1. Load cart from LocalStorage (if any)
+            const savedCart = localStorage.getItem('tradelite_cart');
+            if (savedCart) {
+                this.cart = JSON.parse(savedCart);
+                this.updateCartUI();
+            }
+
+            // 2. Fetch Products from Backend
+            this.fetchProducts();
+        },
+
+        /* FETCH DATA */
+        fetchProducts: function () {
+            // Show loading state
+            document.getElementById('app').innerHTML = '<div class="loader">Loading products...</div>';
+
+            // Call Google Apps Script function: getCatalog()
+            google.script.run
+                .withSuccessHandler(this.onProductsLoaded)
+                .withFailureHandler(this.onError)
+                .getCatalog();
+        },
+
+        onProductsLoaded: function (response) {
+            if (response.success) {
+                App.products = response.data;
+                App.renderProducts(App.products);
+            } else {
+                App.onError(response.error);
+            }
+        },
+
+        onError: function (error) {
+            document.getElementById('app').innerHTML = `<div style="color:red; text-align:center">Error: ${error}</div>`;
+        },
+
+        /* RENDERING */
+        renderProducts: function (products) {
+            const container = document.getElementById('app');
+
+            if (products.length === 0) {
+                container.innerHTML = '<div class="loader">No products found. Add some in the Sheet!</div>';
+                return;
+            }
+
+            let html = '<div class="grid">';
+            products.forEach(p => {
+                // Fallback image if empty
+                const img = p.image_url || 'https://via.placeholder.com/160?text=No+Image';
+
+                html += `
+          <div class="card">
+            <img src="${img}" class="card-img" alt="${p.name}">
+            <div class="card-body">
+              <div class="product-name">${p.name}</div>
+              <div class="product-cat">${p.category}</div>
+              <div class="product-price">$${p.price}</div>
+              <button class="btn-add" onclick="App.addToCart('${p.id}')">Add to Cart</button>
+            </div>
+          </div>
+        `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        },
+
+        /* CART LOGIC */
+        addToCart: function (id) {
+            const product = this.products.find(p => p.id === String(id)); // Ensure ID match
+            if (!product) return;
+
+            const existingItem = this.cart.find(item => item.id === id);
+            if (existingItem) {
+                existingItem.qty++;
+            } else {
+                this.cart.push({ ...product, qty: 1 });
+            }
+
+            this.saveCart();
+            this.updateCartUI();
+        },
+
+        saveCart: function () {
+            localStorage.setItem('tradelite_cart', JSON.stringify(this.cart));
+        },
+
+        updateCartUI: function () {
+            const count = this.cart.reduce((sum, item) => sum + item.qty, 0);
+            const total = this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            const cartBar = document.getElementById('cart-bar');
+            const cartTotal = document.getElementById('cart-total');
+            const cartCount = document.getElementById('cart-count');
+
+            if (count > 0) {
+                cartBar.classList.add('visible');
+                cartCount.textContent = `${count} Items`;
+                cartTotal.textContent = `$${total.toFixed(2)}`;
+            } else {
+                cartBar.classList.remove('visible');
+            }
+        },
+
+        /* CHECKOUT */
+        checkout: function () {
+            // 1. Gather basic info (simple prompt for now)
+            const name = prompt("Please enter your Name:");
+            if (!name) return;
+            const phone = prompt("Please enter your Phone (for WhatsApp):");
+            if (!phone) return;
+
+            const orderData = {
+                orderId: 'ORD-' + Date.now(),
+                customerName: name,
+                customerPhone: phone,
+                items: this.cart,
+                totalAmount: this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0)
+            };
+
+            // 2. Prepare WhatsApp Message
+            let message = `Hi, I would like to place an order:%0A`;
+            message += `*Name:* ${name}%0A`;
+            this.cart.forEach(item => {
+                message += `- ${item.name} (x${item.qty}) - $${item.price * item.qty}%0A`;
+            });
+            message += `*Total: $${orderData.totalAmount}*`;
+
+            // 3. Log to Backend (Fire and Forget)
+            google.script.run.submitOrder(orderData);
+
+            // 4. Open WhatsApp
+            // Replace with your business number if needed, currently opens user selection
+            window.open(`https://wa.me/?text=${message}`, '_blank');
+
+            // 5. Clear Cart
+            this.cart = [];
+            this.saveCart();
+            this.updateCartUI();
+        }
+    };
+
+    // Start the App when page loads
+    window.onload = function () {
+        App.init();
+    };
+</script>
