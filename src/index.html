@@ -1,41 +1,361 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <base target="_top">
-    <!-- Include CSS -->
-    <?!= include('css'); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeLite Store</title>
+    <style>
+        :root {
+            --primary: #25D366;
+            --dark: #075E54;
+            --light: #f0f2f5;
+            --white: #ffffff;
+            --gray: #888888;
+            --text: #111b21;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--light);
+            color: var(--text);
+        }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--white);
+            padding: 15px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        /* CONTROLS (Search/Filter) */
+        .controls {
+            background: var(--white);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        /* GRID */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* CARD */
+        .card {
+            background: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-img-box {
+            height: 200px;
+            background: #eee;
+            position: relative;
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-body {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .card-cat {
+            color: var(--gray);
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+
+        .card-price {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--dark);
+            margin-top: auto;
+        }
+
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-buy {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-buy:hover {
+            background: var(--dark);
+        }
+
+        /* LOADING */
+        #loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+            font-size: 1.2rem;
+        }
+    </style>
 </head>
 
 <body>
 
-    <header>
-        <div class="logo">TradeLite Store</div>
-    </header>
+    <!-- MAIN STORE -->
+    <div id="store">
+        <header>
+            <div class="container header-content">
+                <div class="logo">TradeLite</div>
+                <div id="cart-badge">Cart: 0</div>
+            </div>
+        </header>
 
-    <div class="container">
-        <!-- Products will be injected here -->
-        <div id="app"></div>
-    </div>
+        <div class="container">
+            <!-- Search & Filters -->
+            <div class="controls">
+                <input type="text" id="search" class="search-bar" placeholder="Search products..."
+                    oninput="app.search(this.value)">
 
-    <!-- Floating Cart Bar -->
-    <div id="cart-bar" class="cart-bar">
-        <div>
-            <div id="cart-count" style="font-weight:bold; font-size:0.9rem">0 Items</div>
-            <div id="cart-total" style="font-size:0.8rem; color:#666">$0.00</div>
+                <div class="filters">
+                    <select id="cat-filter" onchange="app.filter()">
+                        <option value="all">All Categories</option>
+                    </select>
+
+                    <select id="sort-filter" onchange="app.sort()">
+                        <option value="newest">Newest</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid & Loading -->
+            <div id="loading">Connecting to Store...</div>
+            <div id="grid" class="grid"></div>
         </div>
-        <button class="btn-checkout" onclick="App.checkout()">
-            <span>WhatsApp Checkout</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                    d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 15 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z" />
-            </svg>
-        </button>
     </div>
 
-    <!-- Include JS -->
-    <?!= include('js'); ?>
+    <script>
+        class StoreApp {
+            constructor() {
+                this.products = [];
+                this.filtered = [];
+                this.categories = new Set();
 
+                // URL + Request Action
+                this.apiUrl = 'https://script.google.com/macros/s/AKfycbyx-eDuoxvlXOMbNkDctCIsZIK-DVP92okw_bQYBZPKQsrITEb00o5kedyMx-lR4Yei/exec';
+
+                // CONNECT VIA JSONP (Extension-less)
+                this.connectJSONP();
+            }
+
+            connectJSONP() {
+                const loadingEl = document.getElementById('loading');
+
+                // Define global callback
+                window.handleStoreData = (response) => {
+                    console.log("Data Recv:", response);
+                    if (response.success) {
+                        loadingEl.style.display = 'none';
+                        this.init(response.data);
+                    } else {
+                        loadingEl.innerHTML = "<span style='color:red'>API Error: " + response.error + "</span>";
+                    }
+                };
+
+                // Create Script Tag
+                const script = document.createElement('script');
+                // We add &callback=handleStoreData to tell Google to wrap the JSON
+                script.src = this.apiUrl + "?action=getCatalog&callback=handleStoreData";
+                script.onerror = () => {
+                    loadingEl.innerHTML = "<span style='color:red'>Connection Failed.<br>Check if code is deployed correctly.</span>";
+                };
+
+                // Inject
+                document.body.appendChild(script);
+            }
+
+            init(data) {
+                this.products = data;
+                this.filtered = data;
+
+                // Extract Categories
+                this.products.forEach(p => {
+                    if (p.category) this.categories.add(p.category);
+                });
+
+                this.renderCategories();
+                this.renderGrid();
+            }
+
+            renderCategories() {
+                const select = document.getElementById('cat-filter');
+                select.innerHTML = '<option value="all">All Categories</option>';
+                this.categories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.innerText = c;
+                    select.appendChild(opt);
+                });
+            }
+
+            renderGrid() {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+
+                if (this.filtered.length === 0) {
+                    grid.innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No products found.</p>';
+                    return;
+                }
+
+                this.filtered.forEach(p => {
+                    const img = p.image_url || 'https://via.placeholder.com/300?text=No+Image';
+                    const html = `
+                        <div class="card">
+                            <div class="card-img-box">
+                                <img src="${img}" class="card-img" onerror="this.src='https://via.placeholder.com/300'">
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title">${p.name}</div>
+                                <div class="card-cat">${p.category}</div>
+                                <div class="card-price">$${p.price}</div>
+                                <div class="card-actions">
+                                    <button class="btn btn-buy" onclick="app.buy('${p.name}', ${p.price})">Buy Now</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    grid.innerHTML += html;
+                });
+            }
+
+            update() {
+                const term = document.getElementById('search').value.toLowerCase();
+                const cat = document.getElementById('cat-filter').value;
+                const sort = document.getElementById('sort-filter').value;
+
+                // Filter
+                this.filtered = this.products.filter(p => {
+                    const matchesSearch = p.name.toLowerCase().includes(term) || (p.category && p.category.toLowerCase().includes(term));
+                    const matchesCat = cat === 'all' || p.category === cat;
+                    return matchesSearch && matchesCat;
+                });
+
+                // Sort
+                if (sort === 'price-asc') {
+                    this.filtered.sort((a, b) => a.price - b.price);
+                } else if (sort === 'price-desc') {
+                    this.filtered.sort((a, b) => b.price - a.price);
+                }
+
+                this.renderGrid();
+            }
+
+            search(val) { this.update(); }
+            filter() { this.update(); }
+            sort() { this.update(); }
+
+            buy(name, price) {
+                const msg = `Hi, I want to buy: ${name} ($${price})`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+
+                // For 'POST', we still need 'no-cors' fetch (Fire & Forget) -> This always works for logging
+                fetch(this.apiUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({
+                        orderId: 'ORD-' + Date.now(),
+                        customerName: 'Local User',
+                        items: [{ name: name, price: price }],
+                        totalAmount: price
+                    })
+                });
+            }
+        }
+
+        const app = new StoreApp();
+    </script>
 </body>
 
 </html>
